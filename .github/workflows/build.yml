@@ -1,0 +1,19 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install video tools
+        run: brew install yt-dlp ffmpeg
+      - name: Test
+        run: swift test
+      - name: Build app bundle
+        run: ./scripts/build-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YouTube-Clipper
+          path: dist/
