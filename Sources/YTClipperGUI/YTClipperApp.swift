@@ -43,6 +43,7 @@ final class ClipModel: ObservableObject {
     @Published var status = ""
     @Published var error: String?
     @Published var output: URL?
+    @Published var outputFileSize: String?
     @Published var copied = false
     private var runner: CommandRunner?
     private var job: Task<Void, Never>?
@@ -59,7 +60,7 @@ final class ClipModel: ObservableObject {
             let tools = try Toolchain.discover()
             let runner = CommandRunner()
             self.runner = runner
-            busy = true; error = nil; output = nil; copied = false
+            busy = true; error = nil; output = nil; outputFileSize = nil; copied = false
             status = "Preparing…"
             job = Task {
                 defer { busy = false; self.runner = nil }
@@ -68,6 +69,12 @@ final class ClipModel: ObservableObject {
                         outputDirectory: outputDirectory) { [weak self] phase in
                             await self?.updatePhase(phase)
                         }
+                    if let output {
+                        let attributes = try? FileManager.default.attributesOfItem(atPath: output.path)
+                        if let size = attributes?[.size] as? NSNumber {
+                            outputFileSize = ByteCountFormatter.string(fromByteCount: size.int64Value, countStyle: .file)
+                        }
+                    }
                     status = "Your clip is ready."
                 } catch is CancellationError {
                     status = "Cancelled."
@@ -172,6 +179,9 @@ struct ContentView: View {
                         .font(.headline).foregroundStyle(.green)
                     Text(output.lastPathComponent).font(.caption).foregroundStyle(.secondary)
                         .textSelection(.enabled)
+                    if let fileSize = model.outputFileSize {
+                        Text("File size: \(fileSize)").font(.caption).foregroundStyle(.secondary)
+                    }
                     HStack {
                         Button { model.copy() } label: {
                             Label(model.copied ? "Copied!" : "Copy to clipboard", systemImage: model.copied ? "checkmark" : "doc.on.doc")
